@@ -10,7 +10,7 @@ from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunct
 from collections import defaultdict
 
 # --- Download vector DB from external source if needed ---
-CHROMA_ZIP_URL = "https://limewire.com/assets/ff77b8c4-9f80-4a2d-acc9-9c19bc627dfb/ChromaDB.zip?download-mitm=true"
+CHROMA_ZIP_URL = "https://huggingface.co/datasets/aidenbrightside/files/resolve/main/ChromaDB.zip"
 CHROMA_DIR = "./ChromaDB"
 
 def download_and_extract_chroma():
