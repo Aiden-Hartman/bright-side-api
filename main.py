@@ -10,7 +10,7 @@ from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunct
 from collections import defaultdict
 
 # === Config ===
-CHROMA_ZIP_URL = "https://huggingface.co/datasets/aidenbrightside/files/resolve/main/ChromaDB.zip?download=true"
+CHROMA_ZIP_URL = "https://drive.google.com/uc?export=download&id=1KNotUlmEj3_7Hdp5eVhDTFdDKwOLEm1N"
 CHROMA_DIR = "./ChromaDB"
 COLLECTION_NAME = "brightside_supplement_data"
 MODEL_NAME = "intfloat/e5-small-v2"
