@@ -9,55 +9,63 @@ import requests
 from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
 from collections import defaultdict
 
-# --- Download vector DB from external source if needed ---
-CHROMA_ZIP_URL = "https://huggingface.co/datasets/aidenbrightside/files/resolve/main/ChromaDB.zip"
+# === Config ===
+CHROMA_ZIP_URL = "https://huggingface.co/datasets/aidenbrightside/files/resolve/main/ChromaDB.zip?download=true"
 CHROMA_DIR = "./ChromaDB"
+COLLECTION_NAME = "brightside_supplement_data"
+MODEL_NAME = "intfloat/e5-small-v2"
 
+# === Step 1: Download + Extract ChromaDB if Missing ===
 def download_and_extract_chroma():
     if not os.path.exists(CHROMA_DIR):
         print("🔽 ChromaDB not found. Downloading...")
         try:
-            r = requests.get(CHROMA_ZIP_URL)
             zip_path = "ChromaDB.zip"
-            with open(zip_path, "wb") as f:
-                f.write(r.content)
+
+            # Streaming download (safe for large files)
+            with requests.get(CHROMA_ZIP_URL, stream=True) as r:
+                r.raise_for_status()
+                with open(zip_path, "wb") as f:
+                    for chunk in r.iter_content(chunk_size=8192):
+                        f.write(chunk)
+
+            # Extract to ./ChromaDB
             with zipfile.ZipFile(zip_path, "r") as zip_ref:
                 zip_ref.extractall(".")
-            print("✅ ChromaDB extracted.")
+            print("✅ ChromaDB extracted successfully.")
+
         except Exception as e:
-            print("❌ Failed to download ChromaDB:", str(e))
+            print("❌ Failed to download or unzip ChromaDB:", str(e))
             raise
 
 download_and_extract_chroma()
 
-# --- Config ---
-COLLECTION_NAME = "brightside_supplement_data"
-MODEL_NAME = "intfloat/e5-small-v2"
-
-# --- Initialize FastAPI ---
+# === Step 2: Initialize FastAPI ===
 app = FastAPI()
 
-# --- Request Schema ---
+# === Step 3: Define Input Schema ===
 class QueryRequest(BaseModel):
     query: str
     top_n: int = 5
 
-# --- Load Vector DB ---
+# === Step 4: Load ChromaDB Collection ===
 embedding_fn = SentenceTransformerEmbeddingFunction(model_name=MODEL_NAME)
 client = chromadb.PersistentClient(path=CHROMA_DIR)
 collection = client.get_collection(name=COLLECTION_NAME, embedding_function=embedding_fn)
 
+# === Utility to Clean Text ===
 def clean_text(text: str) -> str:
     cleaned = re.sub(r"\(cid:\d+\)", "", text)
     cleaned = re.sub(r"[\u0000-\u001F\u007F-\u009F]+", " ", cleaned)
     return re.sub(r"\s+", " ", cleaned).strip()
 
+# === Step 5: Product Search Logic ===
 def query_top_products(query: str, top_n: int = 5) -> List[Dict[str, Any]]:
     search_results = collection.query(
         query_texts=[query],
         n_results=30
     )
-    
+
     product_hits = {}
     grouped_chunks = defaultdict(list)
 
@@ -90,7 +98,7 @@ def query_top_products(query: str, top_n: int = 5) -> List[Dict[str, Any]]:
     sorted_hits = sorted(product_hits.values(), key=lambda x: x["match_score"])
     return sorted_hits[:top_n]
 
-# --- Endpoint ---
+# === Step 6: Expose POST /query Endpoint ===
 @app.post("/query")
 def query_products(req: QueryRequest):
     try:
